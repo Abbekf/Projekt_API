@@ -1,91 +1,98 @@
-import requests 
+import requests
 
-with open ("spara_data.txt", "r")as file:
-   lines = file.readlines()
-   print(lines)
-
-# klassen skickar API-förfrågan och hämtar väderdata. 
-class ApiRequest: 
+# Klassen för att hämta väderdata
+class ApiRequest:
     def __init__(self, latitude, longitude):
         self.latitude = latitude
         self.longitude = longitude
         self.url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m"
-        
-# Definierar en metod som hämtar väderdata från API
+
     def fetch_data(self):
         response = requests.get(self.url)
-        print (response)
         if response.status_code in [200, 201, 202, 203]:
-            return( response.json()) # returnar värdet om det får rätt "svarskod"
+            return response.json()
         else:
             print("Misslyckades att hämta väderdata från API.")
-             
- 
-# Skapar en klass för att bearbeta väderdatan som hämtats från API
+            
+
+# Klass för att bearbeta väderdata
 class Sort:
     def __init__(self, data):
         self.data = data
 
-# Definierar en metod för att extrahera specifik väderinformation.
     def weather_info(self):
         hourly_data = self.data.get('hourly', {})
         temperature = hourly_data.get('temperature_2m', 'No data')
         humidity = hourly_data.get('relative_humidity_2m', 'No data')
         wind_speed = hourly_data.get('wind_speed_10m', 'No data')
         return temperature, humidity, wind_speed
-    
 
-latitude = input ("välj lat, ange i kordinater: \n")
-longitude = input ("välj log, ange i kordinater: \n") 
-stad = input ("Ge din plats ett namn: \n") 
+# Funktion för att hantera menyval
+def meny():
+    while True:
+        print("\nVälj ett alternativ")
+        print("1. Lägg till stad")
+        print("2. Visa städer")
+        print("3. Visa väder för stad")
+        print("4. Avsluta")
+        
+        val = input("Ange ditt val (1-4): \n")
 
+        if val == "1":
+            stad = input("Vilken stad vill du lägga till?: ")
+            latitude = input("Ange latitud för staden: ")
+            longitude = input("Ange longitud för staden: ")
 
-# Skapa en instans av ApiRequest-klassen och hämta väderdata.
-api_request = ApiRequest(latitude, longitude)
-weather_data = api_request.fetch_data()
+            # Spara stad och koordinater i en fil
+            with open("spara_data.txt", "a") as file:
+                file.write(f"{stad},{latitude},{longitude}\n")
+            print(f"Staden {stad} har lagts till!")
 
+        elif val == "2":
+            # Visa alla sparade städer
+            with open("spara_data.txt", "r") as file:
+                stader = file.readlines()
+                if stader:
+                    print("Sparade städer:")
+                    for stad in stader:
+                        print(stad)
+                else:
+                    print("Inga städer sparade.")
 
-# bearbetar  och extraherar temperatur, luftfuktighet och vindhastighet för användning.
-sorter = Sort(weather_data)
-temperature, humidity, wind_speed = sorter.weather_info()
+        elif val == "3":
+            stad = input("Vilken stad vill du visa väder för?: ")
+            with open("spara_data.txt", "r") as file:
+                stader = file.readlines()
 
-# printa ut värderna.
-print(f"Temperature: {temperature[0]}")
-print(f"Humidity: {humidity[0]}")
-print(f"Wind Speed: {wind_speed[0]}")
+            # Hitta staden och dess koordinater
+            found = False
+            for line in stader:
+                data = line.strip().split(',')
+                if data[0].lower() == stad.lower():
+                    latitude = data[1]
+                    longitude = data[2]
+                    found = True
+                    break
 
-# kordinater stockholm: 59.33 |  18.03
+            if found:
+                # Hämta och visa väderdata för staden
+                api_request = ApiRequest(latitude, longitude)
+                weather_data = api_request.fetch_data()
 
-with open("spara_data.txt", "a") as file:
-    file.write(f"temperature: {temperature[0]},humidity: {humidity[0]},wind_speed: {wind_speed[0]}\n")
+                if weather_data:
+                    sorter = Sort(weather_data)
+                    temperature, humidity, wind_speed = sorter.weather_info()
+                    print(f"Temperature: {temperature[0]}")
+                    print(f"Humidity: {humidity[0]}")
+                    print(f"Wind Speed: {wind_speed[0]}")
+            else:
+                print(f"Staden {stad} hittades inte.")
+        
+        elif val == "4":
+            print("Programmet avslutas.")
+            break
+        else:
+            print("Ogiltigt val, försök igen.")
 
-
-# TODO: gör en meny. t ex 1. lägg till stad. 2. visa städer. 3. visa väder för stad.
-#
-
-# Visa menyn
-print("Välj ett alternativ")
-print("1. Lägg till stad")
-print("2. Visa städer")
-print("3. Visa väder för stad")
-
-# Hämta användarens val
-val = input("Ange ditt val (1-3): \n")
-
-# Använd if-satser för att hantera olika val
-if val == "1":
-    stad = input("Vilken stad vill du lägga till?: ")
-    # Lägg till funktionalitet för att spara staden
-    print(f"Staden {stad} har lagts till!")
-    
-elif val == "2":
-    # Lägg till funktionalitet för att visa städer
-    print("Här är listan med städer...")
-    
-elif val == "3":
-    stad = input("Vilken stad vill du visa väder för?: ")
-    # Lägg till funktionalitet för att visa vädret för en stad
-    print(f"Visar vädret för {stad}...")
-    
-else:
-    print("Ogiltigt val, försök igen.")
+if __name__ == "__main__":
+    meny()
